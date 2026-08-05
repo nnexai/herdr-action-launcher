@@ -15,7 +15,37 @@ picker for manual workspace actions configured globally or in a repository's
 - dynamic `Stop: ...` actions for persistent services;
 - no runtime dependencies beyond Node.js, Herdr, and fzf.
 
-## Install from a checkout
+## Install from GitHub
+
+Install the published repository directly into Herdr's managed plugin storage:
+
+```bash
+herdr plugin install nnexai/herdr-action-launcher --yes
+```
+
+You can pin a branch, tag, or commit with `--ref`:
+
+```bash
+herdr plugin install nnexai/herdr-action-launcher --ref main --yes
+```
+
+Herdr-managed installs do not require a local checkout. To migrate from a
+local development link, unlink it first:
+
+```bash
+herdr plugin unlink nnex.action-launcher
+herdr plugin install nnexai/herdr-action-launcher --yes
+```
+
+Herdr keeps the plugin's config and state directories when reinstalling. To
+refresh a GitHub-managed install later, reinstall it:
+
+```bash
+herdr plugin uninstall nnex.action-launcher
+herdr plugin install nnexai/herdr-action-launcher --ref main --yes
+```
+
+For local development instead, use:
 
 ```bash
 herdr plugin link /path/to/herdr-action-launcher
