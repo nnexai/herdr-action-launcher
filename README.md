@@ -98,3 +98,7 @@ Use `mode: "run"` (the default) for one-off commands, `mode: "pane"` for a
 persistent split pane, and `mode: "tab"` for a persistent dedicated tab.
 Persistent targets receive a dynamic stop action, and closing their Herdr
 pane/tab also terminates the process.
+
+## License
+
+[MIT](LICENSE) © 2026 Konni Hartmann.
