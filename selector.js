@@ -78,11 +78,18 @@ function loadActions(repo) {
     process.env.HERDR_PLUGIN_CONFIG_DIR || ".",
     "actions.json",
   );
-  const localFile = repo.repoRoot ? path.join(repo.repoRoot, ".herdr", "actions.json") : null;
+  const repoFile = repo.repoRoot ? path.join(repo.repoRoot, ".herdr", "actions.json") : null;
+  const checkoutFile = repo.checkout ? path.join(repo.checkout, ".herdr", "actions.json") : null;
+  const files = [globalFile, repoFile, checkoutFile].filter((file, index, all) => (
+    file && all.findIndex((candidate) => candidate && path.resolve(candidate) === path.resolve(file)) === index
+  ));
   const merged = new Map();
 
-  for (const action of readJson(globalFile).actions) merged.set(action.id, action);
-  for (const action of readJson(localFile).actions) merged.set(action.id, action);
+  // Later scopes override earlier scopes by action id, while all other actions
+  // remain visible: global -> repository -> active worktree/checkout.
+  for (const file of files) {
+    for (const action of readJson(file).actions) merged.set(action.id, action);
+  }
 
   return [...merged.values()]
     .filter((action) => action.enabled !== false)

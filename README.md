@@ -71,12 +71,16 @@ The action schema and persistent pane/tab examples are shown below.
 
 ## Configuration
 
-The launcher merges:
+The launcher merges action files in this order:
 
-1. the global plugin config directory's `actions.json`;
-2. `<repo-root>/.herdr/actions.json`.
+1. global: the plugin config directory's `actions.json`;
+2. repository: `<repo-root>/.herdr/actions.json`, when the cwd belongs to a Git repository;
+3. active checkout/worktree: `<active-checkout>/.herdr/actions.json` (or the active cwd when no worktree is present).
 
-Repo-local actions override global actions with the same `id`.
+Actions are merged by `id`, so later scopes override an earlier action with the
+same name while all other global and repository actions remain visible. This
+allows a committed repository action set to provide defaults while an ignored
+`.herdr/actions.json` in an active worktree adds or overrides local commands.
 
 ```json
 {
