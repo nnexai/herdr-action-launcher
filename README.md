@@ -103,6 +103,12 @@ persistent split pane, and `mode: "tab"` for a persistent dedicated tab.
 Persistent targets receive a dynamic stop action, and closing their Herdr
 pane/tab also terminates the process.
 
+The `cwd` field accepts:
+
+- `workspace`: the active Herdr workspace cwd;
+- `worktree`: the active checkout/worktree path;
+- `repo`: the repository root.
+
 ## License
 
 [MIT](LICENSE) © 2026 Konni Hartmann.

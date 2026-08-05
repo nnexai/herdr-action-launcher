@@ -204,6 +204,7 @@ function persistentActions(repo) {
 
 function actionCwd(action, repo) {
   if (action.cwd === "repo") return repo.repoRoot || repo.workspace;
+  if (action.cwd === "workspace") return repo.workspace;
   return repo.checkout || repo.workspace;
 }
 
