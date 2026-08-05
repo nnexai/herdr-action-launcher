@@ -37,10 +37,7 @@ Then reload Herdr:
 herdr server reload-config
 ```
 
-The complete action schema and persistent pane/tab examples are documented in
-[`tools/herdr-action-launcher/README.md`](tools/herdr-action-launcher/README.md)
-when this project is embedded elsewhere, or directly in this repository's
-`README.md` sections below.
+The action schema and persistent pane/tab examples are shown below.
 
 ## Configuration
 
