@@ -6,6 +6,8 @@ It keeps Herdr's native agent harness intact while providing one fzf action
 picker for manual workspace actions configured globally or in a repository's
 `.herdr/actions.json` file.
 
+![Workspace Actions picker](docs/assets/action-launcher.png)
+
 ## Features
 
 - one popup picker for the active workspace, repository, or worktree;
