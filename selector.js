@@ -125,6 +125,10 @@ function validateAction(action) {
   if (!["right", "down"].includes(direction)) {
     throw new Error(`action ${action.id} has invalid pane direction: ${direction}`);
   }
+  const entrypoint = action.entrypoint || "shell";
+  if (!["shell", "exec"].includes(entrypoint)) {
+    throw new Error(`action ${action.id} has invalid entrypoint: ${entrypoint}`);
+  }
   return {
     description: "",
     confirm: false,
@@ -134,6 +138,7 @@ function validateAction(action) {
     cwd,
     mode,
     direction,
+    entrypoint,
   };
 }
 
@@ -162,6 +167,11 @@ function writePersistentState(entries) {
 
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
+function persistentCommand(action) {
+  const command = action.command.map(shellQuote).join(" ");
+  return action.entrypoint === "exec" ? `exec ${command}` : command;
 }
 
 function persistentActions(repo) {
@@ -301,7 +311,7 @@ function startPane(action, repo) {
   const title = action.label || action.paneLabel || action.title;
   herdrJson(["pane", "rename", paneId, title]);
 
-  const command = action.command.map(shellQuote).join(" ");
+  const command = persistentCommand(action);
   try {
     herdrCommand(["pane", "run", paneId, command]);
   } catch (error) {
@@ -352,7 +362,7 @@ function startTab(action, repo) {
 
   if (action.paneLabel) herdrJson(["pane", "rename", paneId, action.paneLabel]);
 
-  const command = action.command.map(shellQuote).join(" ");
+  const command = persistentCommand(action);
   try {
     herdrCommand(["pane", "run", paneId, command]);
   } catch (error) {

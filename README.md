@@ -90,6 +90,7 @@ allows a committed repository action set to provide defaults while an ignored
       "title": "Start dev server",
       "description": "Start the dev server in a dedicated tab.",
       "mode": "tab",
+      "entrypoint": "exec",
       "command": ["npm", "run", "dev"],
       "cwd": "worktree",
       "tabLabel": "dev server"
@@ -102,6 +103,11 @@ Use `mode: "run"` (the default) for one-off commands, `mode: "pane"` for a
 persistent split pane, and `mode: "tab"` for a persistent dedicated tab.
 Persistent targets receive a dynamic stop action, and closing their Herdr
 pane/tab also terminates the process.
+
+For pane and tab actions, `entrypoint` defaults to `"shell"`: the command runs
+inside the pane's interactive shell, which remains after the command exits.
+Set `entrypoint: "exec"` to replace that shell with the command; Herdr then
+removes the pane/tab when the command exits.
 
 The `cwd` field accepts:
 
