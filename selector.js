@@ -228,7 +228,7 @@ function pickWithFzf(actions, repo) {
   const lines = actions.map((action) => `${action.id}\t${action.title}\t${action.description}`);
   const header = `${repo.repoName} / ${repo.branch || "no branch"} — Enter runs, Esc cancels`;
   const result = spawnSync("fzf", [
-    "--height=80%",
+    "--height=100%",
     "--layout=reverse",
     "--border",
     "--prompt=Action > ",
