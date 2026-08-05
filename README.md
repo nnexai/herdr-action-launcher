@@ -69,6 +69,33 @@ herdr server reload-config
 
 The action schema and persistent pane/tab examples are shown below.
 
+## Global actions
+
+Global actions are stored in the plugin config directory:
+
+```bash
+herdr plugin config-dir nnex.action-launcher
+```
+
+For example, `actions.json` can define Lazygit for every workspace:
+
+```json
+{
+  "actions": [
+    {
+      "id": "open-lazygit",
+      "title": "Open Lazygit in tab",
+      "description": "Open Lazygit in an auto-closing tab for the active workspace.",
+      "mode": "tab",
+      "entrypoint": "exec",
+      "command": ["lazygit"],
+      "cwd": "workspace",
+      "tabLabel": "lazygit"
+    }
+  ]
+}
+```
+
 ## Configuration
 
 The launcher merges action files in this order:
