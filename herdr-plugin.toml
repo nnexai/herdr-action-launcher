@@ -1,0 +1,23 @@
+id = "nnex.action-launcher"
+name = "Workspace Action Launcher"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Fuzzy-pick configured actions for the active Herdr workspace."
+platforms = ["linux", "macos"]
+
+[[actions]]
+id = "open"
+title = "Open workspace action picker"
+description = "Choose a configured action for the active workspace, repo, or worktree."
+contexts = ["global", "workspace", "tab", "pane"]
+command = ["node", "open.js"]
+
+[[panes]]
+id = "selector"
+title = "Workspace Actions"
+placement = "popup"
+width = "80%"
+height = "70%"
+# The pane runs in the active workspace cwd, so resolve the plugin script via
+# HERDR_PLUGIN_ROOT rather than relying on a relative path.
+command = ["bash", "-c", "exec node \"$HERDR_PLUGIN_ROOT/selector.js\""]
