@@ -104,7 +104,7 @@ The launcher merges action files in this order:
 
 1. global: the plugin config directory's `actions.json`;
 2. repository: `<repo-root>/.herdr/actions.json`, when the cwd belongs to a Git repository;
-3. active checkout/worktree: `<active-checkout>/.herdr/actions.json` (or the active cwd when no worktree is present).
+3. active checkout/worktree: `<active-checkout>/.herdr/actions.json` (the Git checkout root, even when the active cwd is a subdirectory; otherwise the active cwd).
 
 Actions are merged by `id`, so later scopes override an earlier action with the
 same name while all other global and repository actions remain visible. This
@@ -137,6 +137,55 @@ For pane and tab actions, `entrypoint` defaults to `"shell"`: the command runs
 inside the pane's interactive shell, which remains after the command exits.
 Set `entrypoint: "exec"` to replace that shell with the command; Herdr then
 removes the pane/tab when the command exits.
+
+## Environment, ports and health
+
+Any action (`run`, `pane`, `tab`) can declare its environment:
+
+```json
+{
+  "id": "dev-server",
+  "title": "Start dev server",
+  "mode": "tab",
+  "command": ["npm", "run", "dev", "--", "--port", "${PORT}"],
+  "env": { "NODE_ENV": "development" },
+  "ports": { "PORT": "auto" },
+  "health": { "port": "PORT" }
+}
+```
+
+- `env`: extra `NAME: "value"` variables exported to the command, including persistent
+  pane/tab commands. Values and interpolated argv are shell-quoted independently, so
+  spaces and quotes remain part of their original argument.
+- `ports`: `NAME: "auto"` initially picks a free local port (range 20000-39999) and
+  exports it as `NAME`; a fixed number is exported as configured without allocation.
+  Assignments are persisted in the plugin state directory (`ports.json`) per canonical
+  checkout path and name, shared by actions in that checkout, and never silently move,
+  including while the service is listening. Separate worktrees have independent slots.
+  Concurrent launchers serialize allocation and service registration. An unavailable
+  state directory or malformed port registry fails the action instead of losing assignments.
+  This cannot reserve a port against unrelated programs between the initial check and bind;
+  if another process takes an assigned port, resolve that conflict rather than expecting
+  the launcher to silently choose a different one.
+- `${NAME}` in `command` arguments is replaced before quoting with the resolved `env`
+  or `ports` value (port names override `env`; unknown names stay as is).
+- `health`: optional target recorded with the running service so tools such as Cockpit can
+  show its status. Use exactly one of `{"port": 5173}`, `{"port": "PORT"}` (an env or port
+  name) or `{"url": "http://localhost:${PORT}/"}`. The launcher resolves it to a concrete
+  port or URL in its state file and does not probe it.
+
+Cockpit's services sidebar is status-only: start services through this action picker,
+and click a running service in Cockpit to focus its pane. The launcher records
+`session` and canonical `socketPath` alongside its pane/tab IDs and resolved health
+target in `persistent-panes.json`. Persistent launches require `HERDR_SOCKET_PATH`
+to uniquely match a running session from `herdr session list --json`; inherited session
+names cannot override that socket. Entries without this provenance are not offered as
+Stop actions, and pruning/closing never removes another session's registrations.
+
+State files are atomically replaced with private permissions under one bounded
+cross-process lock. The launcher does not steal stale locks; if a process dies holding
+`<plugin-state-dir>/.state-lock`, inspect its `owner.json` PID and token and ensure the
+owner is gone before manually removing that lock.
 
 The `cwd` field accepts:
 

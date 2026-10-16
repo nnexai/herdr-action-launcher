@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+// A local CLI fixture only: never connects to Herdr or creates real panes.
+const fs = require("node:fs");
+const path = require("node:path");
+const assert = require("node:assert/strict");
+assert.equal(process.env.HERDR_SESSION, undefined);
+assert.equal(process.env.HERDR_SESSION_NAME, undefined);
+const args = process.argv.slice(2);
+if (args[0] === "session" && args[1] === "list") {
+  console.log(JSON.stringify({ sessions: [{ name: "fixture", running: true, socket_path: process.env.HERDR_SOCKET_PATH }] }));
+  process.exit(0);
+}
+const file = path.join(process.env.HERDR_PLUGIN_STATE_DIR, "fake-herdr.json");
+const state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : { next: 1, panes: [], tabs: [], commands: [] };
+let result = {};
+let error;
+if (args[0] === "pane" && args[1] === "split") {
+  const pane_id = `pane-${state.next++}`;
+  state.panes.push({ pane_id });
+  result = { pane: { pane_id } };
+} else if (args[0] === "tab" && args[1] === "create") {
+  const tab_id = `tab-${state.next++}`;
+  const pane_id = `pane-${state.next++}`;
+  state.tabs.push({ tab_id });
+  state.panes.push({ pane_id, tab_id });
+  result = { tab: { tab_id }, root_pane: { pane_id } };
+} else if (args[1] === "get") {
+  const entry = args[0] === "pane" ? state.panes.find((pane) => pane.pane_id === args[2]) : state.tabs.find((tab) => tab.tab_id === args[2]);
+  if (!entry) error = { code: `${args[0]}_not_found`, message: "fixture target is absent" };
+  else result = entry;
+} else if (args[1] === "run") {
+  state.commands.push(args[3]);
+} else if (args[1] === "close") {
+  if (args[0] === "pane") state.panes = state.panes.filter((pane) => pane.pane_id !== args[2]);
+  else {
+    state.tabs = state.tabs.filter((tab) => tab.tab_id !== args[2]);
+    state.panes = state.panes.filter((pane) => pane.tab_id !== args[2]);
+  }
+} else if (args[1] !== "rename") {
+  throw new Error(`unsupported fixture command: ${args.join(" ")}`);
+}
+fs.writeFileSync(file, JSON.stringify(state));
+if (error) {
+  console.error(JSON.stringify({ error }));
+  process.exitCode = 1;
+} else console.log(JSON.stringify({ result }));
