@@ -129,7 +129,10 @@ allows a committed repository action set to provide defaults while an ignored
 ```
 
 Use `mode: "run"` (the default) for one-off commands, `mode: "pane"` for a
-persistent split pane, and `mode: "tab"` for a persistent dedicated tab.
+persistent split pane targeting the source pane that opened the picker, and
+`mode: "tab"` for a persistent dedicated tab. Pane actions require a source pane
+ID from Herdr's invocation context (or `HERDR_PANE_ID` for direct CLI use); they
+never infer a target from global focus.
 Persistent targets receive a dynamic stop action, and closing their Herdr
 pane/tab also terminates the process.
 

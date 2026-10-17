@@ -142,6 +142,90 @@ test("launcher state and command contracts", async (t) => {
     fs.rmSync(lock, { recursive: true });
   });
 
+  await t.test("pane services split the invocation source without ambient pane env", async () => {
+    const state = path.join(root, "pane-state");
+    const config = path.join(root, "pane-config");
+    fs.mkdirSync(state);
+    fs.mkdirSync(config);
+    const socket = path.join(root, "pane.sock");
+    fs.writeFileSync(socket, "fixture pathname, not a live socket");
+    const herdr = path.join(root, "pane-herdr");
+    fs.copyFileSync(path.join(__dirname, "fixtures/herdr-cli"), herdr);
+    fs.chmodSync(herdr, 0o700);
+    const action = {
+      id: "pane-service", title: "Pane service", mode: "pane", entrypoint: "exec",
+      command: ["echo", "${MARKER}", "${PORT}"], env: { MARKER: "source 'pane' value" },
+      ports: { PORT: "auto" }, health: { port: "PORT" },
+    };
+    fs.writeFileSync(path.join(config, "actions.json"), JSON.stringify({ actions: [action] }));
+    const source = { pane_id: "source-pane", workspace_id: "source-workspace" };
+    const unrelated = { pane_id: "unrelated-pane", workspace_id: "other-workspace" };
+    const fakeFile = path.join(state, "fake-herdr.json");
+    const initial = { next: 1, panes: [source, unrelated], tabs: [], commands: [] };
+    fs.writeFileSync(fakeFile, JSON.stringify(initial));
+    const foreign = { key: `${checkout}:${action.id}`, session: "foreign", socketPath: "/foreign/socket", paneId: "unrelated-pane", checkout, repoRoot: checkout };
+    const registry = path.join(state, "persistent-panes.json");
+    fs.writeFileSync(registry, JSON.stringify([foreign]));
+    const context = { workspace_cwd: checkout, workspace_id: source.workspace_id, focused_pane_id: source.pane_id };
+    const env = {
+      ...process.env, HERDR_BIN_PATH: herdr, HERDR_PLUGIN_STATE_DIR: state,
+      HERDR_PLUGIN_CONFIG_DIR: config, HERDR_SOCKET_PATH: socket,
+      HERDR_PLUGIN_CONTEXT_JSON: JSON.stringify(context),
+    };
+    delete env.HERDR_PANE_ID;
+    const missing = await child([selector, "--run", action.id], {
+      ...env, HERDR_PLUGIN_CONTEXT_JSON: JSON.stringify({ ...context, focused_pane_id: undefined }),
+    });
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /source pane id/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(fakeFile, "utf8")), initial);
+    assert.deepEqual(JSON.parse(fs.readFileSync(registry, "utf8")), [foreign]);
+    assert.ok(!fs.existsSync(path.join(state, "ports.json")));
+    const mismatched = await child([selector, "--run", action.id], {
+      ...env, HERDR_PLUGIN_CONTEXT_JSON: JSON.stringify({ ...context, focused_pane_id: unrelated.pane_id }),
+    });
+    assert.equal(mismatched.status, 1);
+    assert.match(mismatched.stderr, /source pane does not belong/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(fakeFile, "utf8")), initial);
+    assert.deepEqual(JSON.parse(fs.readFileSync(registry, "utf8")), [foreign]);
+    assert.ok(!fs.existsSync(path.join(state, "ports.json")));
+
+    success(await child([selector, "--run", action.id], env));
+    const fake = JSON.parse(fs.readFileSync(fakeFile, "utf8"));
+    assert.deepEqual(fake.panes.slice(0, 2), [source, unrelated]);
+    assert.equal(fake.splits.length, 1);
+    assert.deepEqual(fake.splits[0].slice(0, 4), ["pane", "split", "--pane", source.pane_id]);
+    const saved = JSON.parse(fs.readFileSync(registry, "utf8"));
+    assert.deepEqual(saved[0], foreign);
+    assert.equal(saved.length, 2);
+    const service = saved[1];
+    assert.equal(service.paneId, fake.panes[2].pane_id);
+    assert.equal(service.kind, "pane");
+    assert.equal(service.session, "fixture");
+    assert.equal(service.socketPath, fs.realpathSync(socket));
+    assert.equal(service.checkout, checkout);
+    assert.equal(service.repoRoot, checkout);
+    assert.equal(service.workspace, checkout);
+    assert.ok(!("tabId" in service));
+    const ports = JSON.parse(fs.readFileSync(path.join(state, "ports.json"), "utf8"));
+    assert.deepEqual(service.health, { port: ports[`${checkout}:PORT`] });
+    assert.equal(fake.commands[0], persistentCommand(validateAction(action), {
+      MARKER: action.env.MARKER, PORT: String(service.health.port),
+    }));
+    const listing = success(await child([selector, "--list"], env));
+    assert.match(listing, /Stop: Pane service/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(registry, "utf8")), saved);
+    const previousPane = process.env.HERDR_PANE_ID;
+    process.env.HERDR_PANE_ID = "ambient-pane";
+    try {
+      assert.equal(repoContext(context).paneId, source.pane_id);
+      assert.equal(repoContext({ workspace_cwd: checkout }).paneId, "ambient-pane");
+    } finally {
+      if (previousPane === undefined) delete process.env.HERDR_PANE_ID;
+      else process.env.HERDR_PANE_ID = previousPane;
+    }
+  });
+
   await t.test("concurrent services retain rows and exact session provenance", async () => {
     const state = path.join(root, "services-state");
     const config = path.join(root, "config");

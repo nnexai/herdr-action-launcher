@@ -15,8 +15,13 @@ const state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : 
 let result = {};
 let error;
 if (args[0] === "pane" && args[1] === "split") {
+  assert.equal(process.env.HERDR_PANE_ID, undefined);
+  assert.ok(!args.includes("--current"));
+  const source = state.panes.find((pane) => pane.pane_id === args[args.indexOf("--pane") + 1]);
+  assert.ok(source, "split must explicitly target an existing source pane");
   const pane_id = `pane-${state.next++}`;
-  state.panes.push({ pane_id });
+  state.panes.push({ pane_id, workspace_id: source.workspace_id });
+  state.splits = [...(state.splits || []), args];
   result = { pane: { pane_id } };
 } else if (args[0] === "tab" && args[1] === "create") {
   const tab_id = `tab-${state.next++}`;
@@ -27,7 +32,7 @@ if (args[0] === "pane" && args[1] === "split") {
 } else if (args[1] === "get") {
   const entry = args[0] === "pane" ? state.panes.find((pane) => pane.pane_id === args[2]) : state.tabs.find((tab) => tab.tab_id === args[2]);
   if (!entry) error = { code: `${args[0]}_not_found`, message: "fixture target is absent" };
-  else result = entry;
+  else result = args[0] === "pane" ? { pane: entry } : entry;
 } else if (args[1] === "run") {
   state.commands.push(args[3]);
 } else if (args[1] === "close") {

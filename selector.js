@@ -88,6 +88,7 @@ function repoContext(ctx) {
   return {
     workspace,
     workspaceId: ctx.workspace_id || process.env.HERDR_WORKSPACE_ID || null,
+    paneId: ctx.focused_pane_id || process.env.HERDR_PANE_ID || null,
     checkout,
     repoRoot,
     branch,
@@ -421,7 +422,16 @@ async function startPersistent(action, repo) {
   if (!cwd || !fs.existsSync(cwd)) throw new Error(`action cwd does not exist: ${cwd}`);
   const isTab = action.mode === "tab";
   if (isTab && !repo.workspaceId) throw new Error("Herdr did not provide the active workspace id");
+  if (!isTab && (typeof repo.paneId !== "string" || !repo.paneId)) {
+    throw new Error("Herdr did not provide the source pane id");
+  }
   const identity = serviceIdentity();
+  if (!isTab) {
+    const source = herdrJson(["pane", "get", repo.paneId])?.pane;
+    if (!source || (repo.workspaceId && source.workspace_id !== repo.workspaceId)) {
+      throw new Error("source pane does not belong to the active workspace");
+    }
+  }
   // Port allocation uses the same lock; resolve it before the launch transaction.
   const env = await launchEnv(action, repo);
   const health = resolveHealth(action, env);
@@ -438,7 +448,7 @@ async function startPersistent(action, repo) {
       "tab", "create", "--workspace", repo.workspaceId, "--cwd", cwd, "--label", title,
       action.focus === false ? "--no-focus" : "--focus",
     ] : [
-      "pane", "split", "--current", "--direction", action.direction, "--cwd", cwd,
+      "pane", "split", "--pane", repo.paneId, "--direction", action.direction, "--cwd", cwd,
       action.focus === false ? "--no-focus" : "--focus",
     ];
     if (!isTab && action.ratio !== undefined) args.push("--ratio", String(action.ratio));
